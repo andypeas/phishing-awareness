@@ -642,13 +642,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 
 <script>
-  // ============================================================
-  // CONFIGURAÇÃO DO FIREBASE
-  // ============================================================
-  // Substitua os valores abaixo pelos dados do seu projeto Firebase.
-  // Veja as instruções no final deste arquivo para criar o projeto.
-  // ============================================================
-
   const firebaseConfig = {
     apiKey:            "AIzaSyB8i_CRmJjMXv4TvETAMfl_SJFbulCXLC0",
     authDomain:        "phishing-awareness-e4435.firebaseapp.com",
@@ -659,14 +652,15 @@
     appId:             "1:350527697285:web:02ea5c9b47412c7bde54ec"
   };
 
-  // Inicializa o Firebase
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
   const counterRef = db.ref('phishing_campaign/click_count');
+  const clicksRef  = db.ref('phishing_campaign/clicks');
 
-  // ============================================================
-  // ANIMAÇÃO DO CONTADOR
-  // ============================================================
+  // Lê o parâmetro ?u= da URL para identificar o colaborador
+  const params  = new URLSearchParams(window.location.search);
+  const userId  = params.get('u') || 'anonimo';
+
   function animateCounter(from, to) {
     const el = document.getElementById('clickCount');
     if (from === to) { el.textContent = to; return; }
@@ -683,22 +677,12 @@
     requestAnimationFrame(update);
   }
 
-  // ============================================================
-  // LÓGICA DO CONTADOR
-  // ============================================================
-  // - Cada visita única (por sessão do navegador) incrementa +1
-  // - O valor é armazenado no Firebase (compartilhado entre todos)
-  // - sessionStorage evita contagem dupla se o usuário recarregar
-  // ============================================================
-
   const SESSION_KEY = 'natto_phishing_counted';
   const isNewVisit = !sessionStorage.getItem(SESSION_KEY);
 
   if (isNewVisit) {
-    // Marca esta sessão como já contada
     sessionStorage.setItem(SESSION_KEY, 'true');
 
-    // Incrementa atomicamente no Firebase usando transaction
     counterRef.transaction(function(currentCount) {
       return (currentCount || 0) + 1;
     }, function(error, committed, snapshot) {
@@ -709,57 +693,26 @@
         animateCounter(0, snapshot.val());
       }
     });
+
+    // Registra QUEM clicou com data/hora e info do navegador
+    clicksRef.push({
+      usuario:    userId,
+      data_hora:  new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+      timestamp:  firebase.database.ServerValue.TIMESTAMP,
+      navegador:  navigator.userAgent,
+      plataforma: navigator.platform || 'desconhecido'
+    });
+
   } else {
-    // Apenas lê o valor atual sem incrementar
     counterRef.on('value', function(snapshot) {
-      const count = snapshot.val() || 0;
-      document.getElementById('clickCount').textContent = count;
+      document.getElementById('clickCount').textContent = snapshot.val() || 0;
     });
   }
 
-  // Atualiza em tempo real (útil para monitorar enquanto a campanha roda)
   counterRef.on('value', function(snapshot) {
-    const count = snapshot.val() || 0;
-    document.getElementById('clickCount').textContent = count;
+    document.getElementById('clickCount').textContent = snapshot.val() || 0;
   });
 </script>
-
-<!--
-============================================================
-  INSTRUÇÕES PARA CONFIGURAR O FIREBASE (GRATUITO)
-============================================================
-
-  1. Acesse https://console.firebase.google.com/
-  2. Clique em "Adicionar projeto" (ou "Add project")
-  3. Dê um nome (ex: "natto-phishing-campaign") e crie
-  4. No painel, clique em "Realtime Database" no menu lateral
-  5. Clique em "Criar banco de dados" (Create database)
-  6. Escolha a região e selecione "Iniciar no modo de teste"
-  7. Após criar, vá em "Regras" e cole:
-
-      {
-        "rules": {
-          "phishing_campaign": {
-            "click_count": {
-              ".read": true,
-              ".write": true
-            }
-          }
-        }
-      }
-
-  8. Publique as regras
-  9. Vá em Configurações do projeto (ícone de engrenagem)
-  10. Em "Seus apps", clique no ícone "</>" (Web)
-  11. Registre o app com um apelido (ex: "phishing-page")
-  12. Copie os valores de firebaseConfig e substitua
-      os campos no topo deste script
-
-  Pronto! O contador agora funciona de qualquer PC/navegador.
-
-============================================================
--->
-
 
 </body>
 </html>
