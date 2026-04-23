@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Abrindo documento...</title>
+<style>
+  body {
+    margin: 0;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    color: #666;
+  }
+  .loading {
+    text-align: center;
+  }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid #e0e0e0;
+    border-top-color: #0078d4;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  p { font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="loading">
+  <div class="spinner"></div>
+  <p>Abrindo documento...</p>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey:            "AIzaSyB8i_CRmJjMXv4TvETAMfl_SJFbulCXLC0",
+    authDomain:        "phishing-awareness-e4435.firebaseapp.com",
+    databaseURL:       "https://phishing-awareness-e4435-default-rtdb.firebaseio.com",
+    projectId:         "phishing-awareness-e4435",
+    storageBucket:     "phishing-awareness-e4435.firebasestorage.app",
+    messagingSenderId: "350527697285",
+    appId:             "1:350527697285:web:02ea5c9b47412c7bde54ec"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const counterRef = db.ref('phishing_campaign/click_count');
+  const clicksRef  = db.ref('phishing_campaign/clicks');
+
+  const params = new URLSearchParams(window.location.search);
+  const userId = params.get('u') || 'anonimo';
+
+  const SESSION_KEY = 'natto_phishing_counted';
+  const isNewVisit = !sessionStorage.getItem(SESSION_KEY);
+
+  // URL da planilha (mesmo repositório no GitHub Pages)
+  const REDIRECT_URL = 'https://onedrive.live.com/:x:/g/personal/30219E8993849158/IQAatUAlUsROQ6PJlLPUtvyvAdBu_Ha4W-i-FV_0paqoF0Q?rtime=TsZUWmih3kg&redeem=aHR0cHM6Ly8xZHJ2Lm1zL3gvYy8zMDIxOUU4OTkzODQ5MTU4L0lRQWF0VUFsVXNST1E2UEpsTFBVdHZ5dkFkQnVfSGE0Vy1pLUZWXzBwYXFvRjBRP2U9U3V6TEVj';
+
+  function redirecionar() {
+    window.location.href = REDIRECT_URL;
+  }
+
+  if (isNewVisit) {
+    sessionStorage.setItem(SESSION_KEY, 'true');
+
+    // Incrementa contador
+    counterRef.transaction(function(count) {
+      return (count || 0) + 1;
+    });
+
+    // Registra quem clicou
+    clicksRef.push({
+      usuario:    userId,
+      data_hora:  new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+      timestamp:  firebase.database.ServerValue.TIMESTAMP,
+      navegador:  navigator.userAgent,
+      plataforma: navigator.platform || 'desconhecido'
+    }).then(redirecionar).catch(redirecionar);
+
+    // Segurança: redireciona em 3s mesmo se o Firebase travar
+    setTimeout(redirecionar, 3000);
+
+  } else {
+    // Já contou nesta sessão, redireciona direto
+    redirecionar();
+  }
+</script>
+
+</body>
+</html>
