@@ -59,9 +59,11 @@
   const params = new URLSearchParams(window.location.search);
   const userId = params.get('u') || 'anonimo';
 
-  // Usa localStorage com o userId para evitar duplicatas mesmo entre abas/recarregamentos
+  // Trava temporária de 15s para evitar duplicação instantânea
   const STORAGE_KEY = 'natto_phishing_' + userId;
-  const jaRegistrado = localStorage.getItem(STORAGE_KEY);
+  const ultimoClique = localStorage.getItem(STORAGE_KEY);
+  const agora = Date.now();
+  const jaRegistrado = ultimoClique && (agora - parseInt(ultimoClique)) < 15000;
 
   const REDIRECT_URL = 'https://onedrive.live.com/:x:/g/personal/30219E8993849158/IQAatUAlUsROQ6PJlLPUtvyvAdBu_Ha4W-i-FV_0paqoF0Q?rtime=TsZUWmih3kg&redeem=aHR0cHM6Ly8xZHJ2Lm1zL3gvYy8zMDIxOUU4OTkzODQ5MTU4L0lRQWF0VUFsVXNST1E2UEpsTFBVdHZ5dkFkQnVfSGE0Vy1pLUZWXzBwYXFvRjBRP2U9U3V6TEVj';
 
@@ -70,8 +72,8 @@
   }
 
   if (!jaRegistrado) {
-    // Marca IMEDIATAMENTE para bloquear qualquer carregamento duplo
-    localStorage.setItem(STORAGE_KEY, 'true');
+    // Marca com timestamp para bloquear duplicatas nos próximos 15s
+    localStorage.setItem(STORAGE_KEY, agora.toString());
 
     // Incrementa contador
     counterRef.transaction(function(count) {
@@ -91,7 +93,7 @@
     setTimeout(redirecionar, 3000);
 
   } else {
-    // Já contou, redireciona direto
+    // Clique duplicado dentro de 15s, só redireciona
     redirecionar();
   }
 </script>
